@@ -205,13 +205,92 @@ $ git branch -d first_commit
 
 - 以下のディレクトリを作っていきます。
 
+<img src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/3486945/c42a014e-99f2-e1c8-9566-26d1cac2d8e2.jpeg" alt="ディレクトリ構成のイメージ" width=50% height=50%>
+
+
 ```terminal
-$ 
+$ DockerCompose % tree
+.
+├── README.md
+├── app
+│   ├── Dockerfile
+│   └── src
+│       └── index.php
+├── compose.yml
+└── mysql
+    └── initdb.d
+        └── init.sql
+
+5 directories, 5 files
+```
+
+```terminal
+$ git status -u
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	app/Dockerfile
+	app/src/index.php
+	compose.yml
+	mysql/initdb.d/init.sql
 ```
 
 
+<br>
+<hr>
 
 
+***一旦ここまでをコミットするのですが、その前にGit管理をしやすくするための設定を行います***
+
+- `.gitignore`ファイルをルートディレクトリ配下に作成し、`.DS_Store`をGit管理から除外します。
+- さらに空のフォルダがコミット対象から外れてしまうリスクを回避するため、各ディレクトリ配下に`.gitkeep`ファイルを作成します。
+
+```terminal
+# Mac OS
+.DS_Store
+```
+
+```terminal
+$ touch .gitkeep # 各ディレクトリに作成
+```
+
+```terminal
+$ git status -u
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.gitignore
+	.gitkeep
+	app/.gitkeep
+	app/Dockerfile
+	app/src/index.php
+	compose.yml
+	mysql/.gitkeep
+	mysql/initdb.d/init.sql
+```
+
+***ここまで出来たらコミット〜プルリクエスト〜マージ〜プルまで実施します***
+
+```terminal
+$ git add .
+$ git status -u
+$ git commit -m "【Add】DockerおよびPHP環境構築に必要なフォルダ・ファイルを作成"
+$ git log
+$ git push
+$ プルリクエストを作成
+$ リモートブランチmainにマージ
+$ git checkout main
+$ git pull origin main
+$ git log
+$ git checkout log # 再びローカルの実装ブランチに戻って次の作業に備えます
+```
+
+- さらに、ここまでの記録をREADME.mdに追記して更新します。
+- 更新したら`README.mdの更新2`のコミットも行っておきます。
+
+
+
+<br>
+<hr>
 <br>
 
 ### <font color="Green">3. Dockerfileの作成</font>
@@ -249,4 +328,9 @@ $
 
 `<img src="" alt="" width=50% height=50%>`
 
+
 <br><br><br><br><br><br><br>
+
+
+
+
