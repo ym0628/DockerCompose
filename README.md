@@ -291,9 +291,120 @@ $ git checkout log # 再びローカルの実装ブランチに戻って次の�
 
 <br>
 <hr>
-<br>
+
 
 ### <font color="Green">3. Dockerfileの作成</font>
+
+***<font color="Red">※動画10分00秒あたりから</font>***
+
+
+- `最終目標`：DockerComposeでコンテナを複数個を一発で簡単に作成・削除できるようにしたい。
+- そのためには、`コンテナ`を作るための`イメージ`が必要。
+- `イメージ`を作るには`Dockerfile`を自作していく必要がある。
+- ということで、次は`Dockerfile`の作成を行なっていきます。
+- `Dockerfile`に以下のように記述していきます。
+
+<br>
+
+- `php`用の`Dockerfile`を作るためのイメージは`Docker Hub`という公式ドキュメントから参照します。
+- https://hub.docker.com/
+- dockerhubのサイトから検索で`php`でキーワード検索する
+- すると、`DOCKER OFFICIAL IMAGE`というphpのイメージがすぐ見つかるのでそれをクリック。
+- `How to use this image`でイメージを指定行きましょう。
+- 今回は、`php`と`Apache`を導入したいと言う目的があるので、それを検索して調べる。
+- 手順としてはphpでオフィシャルイメージのページから`Tags`タブをクリックし、検索窓に`apache`と入力して検索する。
+- すると、phpとapache、両方を含んだイメージの使用例、ドキュメントが見つけられます。
+- 今回は、このイメージで試してみます。
+- <a href="https://hub.docker.com/layers/library/php/8.3.0-apache/images/sha256-10d28c0b61b45dc045ec7a2d0d853e90d275c14d4f2e756e126e8d0bd8457a92?context=explore">php:8.3.0-apache linux/arm64/v8</a>
+- 理由は、Applesillicon、M1チップで使えるイメージが、これだと考えたから。参考にしたのはこちらのドキュメントです。
+- https://matsuand.github.io/docs.docker.jp.onthefly/desktop/mac/apple-silicon/
+- phpのバージョンはひとまず最新の8.3を採用してみます。
+
+
+
+```dockerfile
+# ~/workspace/DockerCompose/app/Dockerfile
+# phpとapacheのイメージ
+FROM php:8.3.0-apache
+```
+
+- イメージはこれで決まり。
+- 次に MySQLを導入するための記述をしていく。
+- 今回はphpと Apacheによって構成されたWebサーバーから、DBすなわちMySQLへ接続する必要がある。
+- MySQLを指定するには、パッケージというものをインストールする必要がある。
+- インストールするには同じく`Dockerfile`内に、`RUN`というコマンドを打ち込む必要がある。
+- 以下のように記述します。
+
+
+```dockerfile
+# ~/workspace/DockerCompose/app/Dockerfile
+# MySQLのパッケージ
+RUN apt update \
+    && docker-php-ext-install pdo_mysql
+```
+
+***[意味]***
+- `apt update`しつつ
+- `&&` かつ次のコマンドを実行します。
+- `docker-php-ext-install`でphpの拡張ファイルをいい感じにインストールしてね。
+- `pdo_mysql`でMySQLに接続してね。
+
+これらの指令を行うコードとなる。
+
+<br>
+
+- 続いて、メインコンテンツとなる`index.php`の中身を実装していく。
+- 今回のコードは主題ではないので、多くは語られていない。
+- 大まかな内容としては、
+- インストールしたMySQLパッケージから特定のクエリを発行し、`var_dump`で出力するという、非常に簡素なビューおよびモデル（DB）の連携を示しています。
+- ソースコードは動画の提供者様のGitHubから拝借します。
+- https://github.com/fuku-youtube/php-mysql-docker-compose
+
+
+
+```php
+<!-- ~/workspace/DockerCompose/app/src/index.php -->
+
+<?php
+
+// 接続
+// hostはコンテナ名を記載する
+$dsn = 'mysql:dbname=test_db;host=run-php-db;';
+$user = 'test';
+$password = 'test';
+
+try {
+    $pdo = new PDO($dsn, $user, $password);
+    $sth = $pdo->query("SELECT * FROM users WHERE id = 1");
+    $user = $sth->fetch(PDO::FETCH_ASSOC);
+    var_dump($user);
+} catch (PDOException $e) {
+    print('Error:'.$e->getMessage());
+    exit;
+}
+```
+
+- 本工程では、以下の通り、2つのファイルにコードを記述しました。
+
+```terminal
+$ git status -u
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   app/Dockerfile
+	modified:   app/src/index.php
+```
+
+***<font color="Red">※動画14分23秒あたりから</font>***
+
+***MySQLの準備***
+
+- 作成したDockerfileからイメージを作成していく。
+- その前に、MySQLファイルの定義が先。
+
+
+
+
 
 
 
@@ -302,6 +413,14 @@ $ git checkout log # 再びローカルの実装ブランチに戻って次の�
 <br>
 
 ### <font color="Green">4. Dockerfileからイメージを作成</font>
+
+
+
+
+
+
+
+
 
 
 
