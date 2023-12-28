@@ -402,34 +402,198 @@ Changes not staged for commit:
 - 作成したDockerfileからイメージを作成していく。
 - その前に、MySQLファイルの定義が先。
 
+```sql
+CREATE TABLE test_db.users (
+    id      INT             NOT NULL,
+    first_name  VARCHAR(14)     NOT NULL,
+    age         INT,  
+    PRIMARY KEY (id)
+);
+
+INSERT INTO `users` VALUES (1, 'Fuku', 30)
+```
+
+- `test_db`というタイトルのデータベースに、`test_db.users`という名前のテーブルを`CREATE`してね。という内容。
+- `test_db`というタイトル名は、先ほどの`index.php`にて定義している。
+- `users`テーブルから情報をひとつ取得すると言うクエリの定義も、先ほどの`index.php`にて定義している。
+- `users`には、`id`や`first_name`そして`age`カラムを用意している。
+- ここまで定義したテーブルやテーブル内のカラムに対して、、、
+- 次の行の`INSERT INTO`にて、引数に id=1, first_name=tanaka, age=35という情報を入力してユーザーを一つ作成するようにこの`SQL`ファイルで指示している。
+- ざっくり言うと、ここではテーブルを作って、その中にデータを入れるというクエリを、この`init.sql`ファイルでは定義した。
+
+<br>
+
+### <font color="Green">4. docker-compose.ymlの実装</font>
+
+***<font color="Red">※動画15分11秒あたりから</font>***
+
+- `compose.yml`ファイルにコードを記述していきます。
+- これは今回の主題である`DockerCompose`というツールを使って開発環境を構築するための指示書みたいなファイルとなります。
+- ここで、使用するDBやWebサーバーを指定していったり、コンテナ起動のポート番号の指定、コンテナ削除後の永続化を実現する定義などを記述します。
+- ソースコードは動画up主様のGitHubをそのまま転載させていただきました。
+- https://github.com/fuku-youtube/php-mysql-docker-compose
+
+```yml
+# パス：　~/workspace/DockerCompose/compose.yml
+# 1番上の階層、決まり文句のようなもの。
+services:
+  # 2番目の階層、作りたいコンテナを定義する。任意の名前をつけられる。
+  php-app:
+    # コンテナ名
+    container_name: run-php-app
+    # ビルドするDockerfileの場所（相対パスで指定してあげる。）
+    build: ./app
+    # ポート（左側はローカルPCのポート番号:右側はコンテナ側のポート番号）
+    # ポート番号も任意で決めることはできるが、番号にはルールがあるのでカスタムする際は知識が必要。
+    ports:
+      - "18080:80"
+    # ローカルPCとコンテナ間でディレクトリをバインド（同期）できる
+    # （左側はローカルPCの相対パス:右側はコンテナのパス）を指定する
+    # 「/var/www/html/」は Apacheのドキュメントルートがこれであるというルールに従っている。
+    volumes:
+      - ./app/src:/var/www/html/
+    # 利用するネットワーク
+    networks:
+      - php-mysql-networks
+    # 指定したサービスの後にコンテナを起動する
+    # 必ずDBを先に起動してからコンテナを起動するように指示している。
+    depends_on:
+      - php-db
+  php-db:
+    # 今回はDockerfileを使うまでもない簡素なappであるため、省略している。いきなりイメージの指定から記述している。
+    # imageはDockerHubの公式ドキュメントに記述の仕方が指南されているのでチェックする。
+    image: mysql:8.0
+    # コンテナ名「run-php-db」は、index.phpの「host=run-php-db」で指定した名前を持ってきている。
+    # ここの名前を間違えると動かないので注意する。
+    container_name: run-php-db
+    ports:
+      - "3307:3306"
+    # コンテナの環境変数を指定できる
+    # コンテナ内で共通に使えるようになる設定・定義であると認識しておく。
+    environment:
+      - MYSQL_ROOT_PASSWORD=root # MySQLに接続するスーパーユーザー最高権限を持つユーザーのパスワード
+      - MYSQL_USER=test # MySQLを操作するユーザーの名前
+      - MYSQL_PASSWORD=test # MySQLを操作するユーザーのパスワード
+      - MYSQL_DATABASE=test_db # これを指定してあげるとDBを勝手に作ってくれる。この名称はindex.phpで定義したDB名を指します。
+    # volumesは、ローカルで設定したinit.sqlの設定をコンテナで実行したいよね。という希望を叶える定義の場所
+    # DBの永続化のボリュームも指定できる
+    volumes:
+      # 左はローカルPCのMySQLの相対パス：右はコンテナのMySQL実行場所の相対パス
+      # /docker-entrypoint-initdb.dは、MySQLを勝手に実行してくれる、Dockerで決められている便利な場所である。
+      - ./mysql/initdb.d:/docker-entrypoint-initdb.d
+      # DBの永続化をさせる定義。コンテナを削除したときに、DBの中身も消えてしまう。それを防ぐのが下記の設定である。
+      - mysql-data:/var/lib/mysql
+    networks:
+      # phpとDBで同じネットワーク名を定義することで、コンテナ同士で接続してくれるようになる。
+      # あえてここで任意の名前を決めなくてもいいっちゃいいのだが、本動画では分かりやすく伝えるために任意の名前をphpとdbで揃えている。
+      - php-mysql-networks
+  # DBをUIで確認できるツール
+  php-adminer:
+    container_name: adminer
+    # イメージ名もDockerHubで探すことができる。
+    image: adminer:4.8.1
+    ports:
+      - 8081:8080
+    networks:
+      # ここも、phpとdb同様、同じ名前のネットワーク名を指定してあげる。
+      - php-mysql-networks
+      # ここも同様、同じ名前のDB名を指定してあげる。
+    depends_on:
+      - php-db
+# 任意のボリュームを作る(DBの永続化用)
+# serviciesと同じく1階層目に書くのがルール。
+volumes:
+  # ここでmysql-dataという名前のDBを指定（⤴のvoluemsの永続化設定で指定した名前）することで、「php-db」のDBのデータを永続化してくれる。
+  mysql-data:
+# 任意のネットワークを作る(わかりやすくするため)
+# ここも第一階層に作らなければならない。
+networks:
+  php-mysql-networks:
+```
+
+***上記コードのメモ***
+
+- `compose.yml`の記述方法にはルールがある。
+- ルールについては公式リファレンスなどを参考にする。
+- Google検索で「compose yml 公式リファレンス」などと検索してみて調べる。
+- https://docs.docker.jp/v1.12/compose/compose-file.html
+
+<br>
+- 1階層目は決まり文句`sevices`を配置
+- 2階層目は、作りたいコンテナを定義する。名前は任意でOK。ここでは、以下のように3つのコンテナを作成する定義を実装している。以下3つのコンテナ名を定義した。
+- 今回は、servicesを3つ作りたい。
+- `php`　と `MySQL(DB)`と `Adminer（DBをUIで確認できるDB管理ツール）`、この3つを定義してあげたわけだ。
+
+```yml
+php-app:
+php-db:
+php-adminer:
+```
+
+<br>
 
 
+### <font color="Green">5. Dockerfileからイメージを作成・コンテナを起動</font>
+
+- 上記の実装ができたら`DockerCompose`でのコンテナ作成の準備完了。
+- ここからターミナルでコマンドを使い、Dockerfileからイメージの作成〜コンテナの起動をおこなっていくことができる。
 
 
+1. まずはDockerDesktopアプリケーションを起動する。
+1. ターミナルで対象のルートディレクトリに移動する。`cd ~/workspace/DockerCompose`（このとき、配下に必ず`compose.yml`ファイルがあるディレクトリでコマンドを実行する）
+1. 次のコマンドを叩く `docker compose up -d`
+1. 上手くいけば、5分くらい待つとイメージ・コンテナが作成・起動する
+
+<br>
+
+- 下記のように、コンテナ・イメージ・ボリュームがDockerDesktopに生成された。
+- `in use`は`使用中`という意味
+- `Running`は起動中という意味
+
+<img src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/3486945/f9a1d6bf-927d-1278-a91c-1f1a7cc41e35.jpeg" alt="コンテナ・イメージ作成の結果画像" width=50% height=50%>
 
 
+- 次のように、DockerDesktopアプリのコンテナメニューから、phpのポスト番号をクリックすると、Apacheを解して、Webサーバーが起動し、ブラウザのローカルホストでUIを確認することができる。
+
+<img src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/3486945/670e62d7-a72a-4973-1613-40815ee7a3cb.jpeg" alt="" width=50% height=50%>
+
+- Adminerを使えば、データベースの中身をブラウザUIで確認することもできる。
+- `compose.yml`で定義したユーザー名やパスワード、DB名を入力すればログインして中身を確認できる。
+
+<img src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/3486945/d409a889-f902-a257-c934-d4f7b20ab765.jpeg" alt="" width=50% height=50%>
 
 
 <br>
 
-### <font color="Green">4. Dockerfileからイメージを作成</font>
+### <font color="Green">6. コンテナの停止・削除</font>
 
-
-
-
-
-
-
-
-
-
-
-
+- 最後に`コンテナは使い捨て`と言うように、作業が終わったら簡単に削除することができるので、やってみる。
+- ターミナルコマンドは`docker compose down`
+- これでコンテナを削除することができる。
+- イメージは残るので、次にコンテナを起動させる際はもっと早く起動させることができる。
+- DBは永続化させる設定を行なっているので、以前作成したDBの`user`情報は残ったまま、コンテナをビルドすることができで便利。
 
 <br>
 
-### <font color="Green">5. コンテナの作成・起動・停止・削除</font>
+- コンテナは削除された。
+<img src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/3486945/ee3befcd-2ea9-a493-c630-59bcb17c0355.jpeg" alt="" width=50% height=50%>
 
+- イメージ・DBは残っている。
+
+<img src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/3486945/45ea2400-997b-49a6-d298-6bb4e25b55b4.jpeg" alt="" width=50% height=50%>
+
+<img src="https://qiita-image-store.s3.ap-northeast-1.amazonaws.com/0/3486945/a76fd470-a02a-ab28-173a-970780149540.jpeg" alt="" width=50% height=50%>
+
+
+今後は以下コマンドでコンテナの起動・削除を行う。
+```terminal
+$ docker compose up -d  # または $ docker compose up
+$ docker compose down
+```
+
+- 以上で動画の内容は終了となります。
+- Laravelの環境構築をどうするかは、また改めて別ドキュメントを調べてやってみることにします。
+- ここまでをコミットして一旦終わりとします。
 
 
 
@@ -449,7 +613,6 @@ Changes not staged for commit:
 
 
 <br><br><br><br><br><br><br>
-
 
 
 
