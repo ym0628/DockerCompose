@@ -1,0 +1,74 @@
+# 1番上の階層、決まり文句のようなもの。
+services:
+  # 2番目の階層、作りたいコンテナを定義する。任意の名前をつけられる。
+  php-app:
+    # コンテナ名
+    container_name: run-php-app
+    # ビルドするDockerfileの場所（相対パスで指定してあげる。）
+    build: ./app
+    # ポート（左側はローカルPCのポート番号:右側はコンテナ側のポート番号）
+    # ポート番号も任意で決めることはできるが、番号にはルールがあるのでカスタムする際は知識が必要。
+    ports:
+      - "18080:80"
+    # ローカルPCとコンテナ間でディレクトリをバインド（同期）できる
+    # （左側はローカルPCの相対パス:右側はコンテナのパス）を指定する
+    # 「/var/www/html/」は Apacheのドキュメントルートがこれであるというルールに従っている。
+    volumes:
+      - ./app/src:/var/www/html/
+    # 利用するネットワーク
+    networks:
+      - php-mysql-networks
+    # 指定したサービスの後にコンテナを起動する
+    # 必ずDBを先に起動してからコンテナを起動するように指示している。
+    depends_on:
+      - php-db
+  php-db:
+    # 今回はDockerfileを使うまでもない簡素なappであるため、省略している。いきなりイメージの指定から記述している。
+    # imageはDockerHubの公式ドキュメントに記述の仕方が指南されているのでチェックする。
+    image: mysql:8.0
+    # コンテナ名「run-php-db」は、index.phpの「host=run-php-db」で指定した名前を持ってきている。
+    # ここの名前を間違えると動かないので注意する。
+    container_name: run-php-db
+    ports:
+      - "3307:3306"
+    # コンテナの環境変数を指定できる
+    # コンテナ内で共通に使えるようになる設定・定義であると認識しておく。
+    environment:
+      - MYSQL_ROOT_PASSWORD=root # MySQLに接続するスーパーユーザー最高権限を持つユーザーのパスワード
+      - MYSQL_USER=test # MySQLを操作するユーザーの名前
+      - MYSQL_PASSWORD=test # MySQLを操作するユーザーのパスワード
+      - MYSQL_DATABASE=test_db # これを指定してあげるとDBを勝手に作ってくれる。この名称はindex.phpで定義したDB名を指します。
+    # volumesは、ローカルで設定したinit.sqlの設定をコンテナで実行したいよね。という希望を叶える定義の場所
+    # DBの永続化のボリュームも指定できる
+    volumes:
+      # 左はローカルPCのMySQLの相対パス：右はコンテナのMySQL実行場所の相対パス
+      # /docker-entrypoint-initdb.dは、MySQLを勝手に実行してくれる、Dockerで決められている便利な場所である。
+      - ./mysql/initdb.d:/docker-entrypoint-initdb.d
+      # DBの永続化をさせる定義。コンテナを削除したときに、DBの中身も消えてしまう。それを防ぐのが下記の設定である。
+      - mysql-data:/var/lib/mysql
+    networks:
+      # phpとDBで同じネットワーク名を定義することで、コンテナ同士で接続してくれるようになる。
+      # あえてここで任意の名前を決めなくてもいいっちゃいいのだが、本動画では分かりやすく伝えるために任意の名前をphpとdbで揃えている。
+      - php-mysql-networks
+  # DBをUIで確認できるツール
+  php-adminer:
+    container_name: adminer
+    # イメージ名もDockerHubで探すことができる。
+    image: adminer:4.8.1
+    ports:
+      - 8081:8080
+    networks:
+      # ここも、phpとdb同様、同じ名前のネットワーク名を指定してあげる。
+      - php-mysql-networks
+      # ここも同様、同じ名前のDB名を指定してあげる。
+    depends_on:
+      - php-db
+# 任意のボリュームを作る(DBの永続化用)
+# serviciesと同じく1階層目に書くのがルール。
+volumes:
+  # ここでmysql-dataという名前のDBを指定（⤴のvoluemsの永続化設定で指定した名前）することで、「php-db」のDBのデータを永続化してくれる。
+  mysql-data:
+# 任意のネットワークを作る(わかりやすくするため)
+# ここも第一階層に作らなければならない。
+networks:
+  php-mysql-networks:
