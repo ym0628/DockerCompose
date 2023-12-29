@@ -39,7 +39,7 @@ https://www.youtube.com/watch?v=cpoempEOtow
 
 
 
-## <font color="Salmon">実装・設定の記録</font>
+## <font color="Salmon">DockerCompose実装の記録</font>
 
 
 こちらに個人の実装の記録やメモを残していきます。
@@ -587,13 +587,50 @@ php-adminer:
 
 今後は以下コマンドでコンテナの起動・削除を行う。
 ```terminal
-$ docker compose up -d  # または $ docker compose up
+$ docker compose up -d --build
 $ docker compose down
 ```
+- オプションコマンド`-d`は`デタッチモード`と呼ばれる。
+- コンテナを作成するときにバックグラウンドで処理してくれる。一応つけておきたいコマンドである。
+- オプションコマンド`--build`はその名の通りビルドする意味。
+- 役割は、DBに変更があった場合に`新しい情報に更新した上でコンテナを作成してくれる。`
+- DBの情報を変更は頻繁にあるため、できれば毎回つけて実行したいオプションコマンドである。
+
+
+<br>
 
 - 以上で動画の内容は終了となります。
 - Laravelの環境構築をどうするかは、また改めて別ドキュメントを調べてやってみることにします。
 - ここまでをコミットして一旦終わりとします。
+
+
+<br>
+
+
+## <font color="Salmon">DockerComposeに関する その他メモ・補足</font>
+
+- `DockerCompose`でコンテナ作成の定義をするために、今回の例では、`compose.yml`ファイルを作成したが、`docker-compose.yml`というファイルで作成することもできるようだ。
+- 違いはよくわからないが、どちらも、`DockerCompose`でコンテナを作る目的という意味ではおそらく同じだと思われます。（個人的推論）
+
+
+## <font color="Salmon">Laravelの導入</font>
+
+- ここまで、Git管理の設定
+- DockerComposeの環境開発の構築
+- 大まかにこの2つを実行してきた。
+- さらに、フレームワークであるLaravelを導入したい。
+- 順序としては、DockerComposeの環境構築が終わった次というタイミングでOKっぽいよ❗️よかった。
+- 参考サイトはこちらのYouTube動画を取り上げさせていただきます。
+
+
+https://www.youtube.com/watch?v=2Tkd_qYOM9A&t=399s
+
+***<font color="Red">※動画13分00秒あたりから</font>***
+
+
+
+
+
 
 
 
