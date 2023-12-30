@@ -627,12 +627,127 @@ https://www.youtube.com/watch?v=2Tkd_qYOM9A&t=399s
 
 ***<font color="Red">※動画13分00秒あたりから</font>***
 
+- LaravelをDocker環境で使うには、まずコンテナの中に入る必要があある。
+- コンテナの中に入るコマンドは`docker exec -it [phpのapp名] bash`
+- 順番はまず`docker-compose up`でコンテナを作成・起動してから。
+
+```terminal
+$ cd ~/ # まずはルートディレクトリに移動
+$ docker compose up -d --build # コンテナを作成・起動させる。
+$ docker exec -it run-php-app bash # 「phpのコンテナ名」を指定している。 
+```
+- コンテナ名は、`compose.yml`で定義している。
+- ここでうまくコマンドが通ると、コマンドが変化する。
+
+```terminal
+$ docker exec -it run-php-app bash
+root@e1f3debbc05c:/var/www/html#
+```
+- 上記出力は、`自身のローカルPCのルート` ： `Apacheのルートディレクトリ` だと思う。
+- 上記のようになると、ターミナルコマンドから、Dockerの指定したコンテナ内に入ったことになる。
+- 試しにここで、`ls`コマンドを打つと、こうなる。
+
+```terminal
+root@e1f3debbc05c:/var/www/html# ls
+index.php
+```
+
+- 上記のように、php-appのコンテナに入ったので、index.phpがディレクトリ配下に格納されているのがわかる。
+- この状態でLaravelを導入するコマンドを叩く
+
+```docker
+$ composer create-project "laravel/laravel"
+```
+- なお、`"laravel/laravel=5.8"`とか`"laravel/laravel=6.*"`のように、バージョンを指定することもできる。
+- バージョンを指定しないと、最新バージョンがインストールされる。
+
+
+```terminal
+root@e1f3debbc05c:/var/www/html#
+$ composer create-project "laravel/laravel" app
+```
+
+- 最後のappは任意のディレクトリ名で良い。
+- ここで指定したディレクトリの配下にLaravelがインストールされる。
+- しかし、今回はエラーが発生
+
+```terminal
+root@e1f3debbc05c:/var/www/html# composer create-project "laravel/laravel" app
+
+bash: composer: command not found
+```
+
+- どうやら、composerがインストールされていないことが原因のようだ。
+- また、コンテナ外では使えるが、内に入ると、composerコマンドが使えない。という例もあるようだ。
+- そんな時の対処方法としては、、、いかに記述します。
+
+
+
+***<font color="Red">※動画14分00秒あたりから</font>***
+
+## ***<font color="Red">Laravelをインストールするために必要なcomposerを導入するための実装</font>***
+
+
+:::note
+- Dockerのイメージをビルドするときにcomposerをインストールすれば解決するみたい。
+- つまり、イメージを作成するDockerfileに、composerをインストールを記述をすれば、`compose up -d --build`したときに、composerをインストールしてくれると思われる。
+:::
+
+
+***【参考】***
+
+https://qiita.com/aki-743/items/81bbd43812d976e75437
+
+https://www.youtube.com/watch?v=2Tkd_qYOM9A&t=399s
+
+https://www.youtube.com/results?search_query=DockerCompose+Laravel+環境構築
+
+<hr>
+
+```dockerfile
+FROM php:8.3.0-apache
+
+RUN apt update \
+    && docker-php-ext-install pdo_mysql
+
+# composer
+ENV COMPOSER_ALLOW_SUPERUSER 1
+ENV COMPOSER_HOME /composer
+ENV PATH $PATH:/composer/vendor/bin
+
+# install composer
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+  && php composer-setup.php \
+  && php -r "unlink('composer-setup.php');" \
+  && mv composer.phar /usr/local/bin/composer
+```
+
+<br><br><br><br>
+
+上記ではうまくいきませんでした。
+よくわからないので、Laravelの環境構築は、またの機会に行います。
+今回は、dockercomposeでの開発環境の構築方法をメインで学ぶことができました。
+これにて終了とします。
 
 
 
 
+***【補足】Apacheとnginxの違い***
 
-
+- 生成 AI は試験運用中です。
+- Laravel には Apache と Nginx という 2 つの Web サーバーソフトがサポートされています
+- Apache は動的コンテンツ処理を得意としており、小中規模向けの Web サーバーです。一方、Nginx 
+- 静的コンテンツをメインに大規模な処理や並列処理を得意としています。﻿
+- Nginx のメリットは次のとおりです。﻿
+- 処理速度が高速
+- 大量かつ高速に処理を実行できる
+- ユーザーの利便性を向上させる機能が備わっている
+- メモリ消費量を抑えることができる
+- Nginx のデメリットは次のとおりです。﻿
+- 動的コンテンツの処理が得意ではない
+- 拡張機能が比較的少ない
+- 初心者向けのドキュメントが少ない
+- Apache は Nginx よりも多くの機能を備えていますが、Nginx は静的ファイルの高速な処理速度を実現しています。﻿
 
 
 
@@ -650,6 +765,4 @@ https://www.youtube.com/watch?v=2Tkd_qYOM9A&t=399s
 
 
 <br><br><br><br><br><br><br>
-
-
 
